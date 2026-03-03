@@ -7,4 +7,5 @@ __all__ = [
     "train",
     "evaluate",
     "predict",
+    "parsers",
 ]

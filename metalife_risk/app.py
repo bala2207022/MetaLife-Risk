@@ -59,7 +59,9 @@ with st.sidebar:
     
     st.markdown("---")
     st.header("⚙️ Settings")
-    model_path = st.text_input("Model path", value="models/best_model.joblib")
+    # Default model path relative to project root
+    default_model_path = str(_PROJECT_ROOT / "models" / "best_model.joblib")
+    model_path = st.text_input("Model path", value=default_model_path)
     
     run_btn = st.button("🚀 Run Predictions", type="primary", use_container_width=True)
 
