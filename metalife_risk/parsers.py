@@ -188,15 +188,21 @@ def parse_whoop_export(uploaded_file: Union[str, io.BytesIO]) -> pd.DataFrame:
 
     # Map possible columns
     mapping = {
-        "total_sleep_mins": ["Total Sleep (min)", "total_sleep", "sleep_minutes", "total_sleep_mins"],
+        "total_sleep_mins": [
+            "Total Sleep (min)",
+            "total_sleep",
+            "sleep_minutes",
+            "total_sleep_mins",
+            "Asleep duration (min)",
+        ],
         "deep_sleep_pct": ["Deep Sleep %", "deep_sleep_pct", "deep_sleep_percent"],
-        "hrv": ["HRV", "hrv"],
-        "resting_hr": ["Resting HR", "resting_heart_rate", "resting_hr"],
-        "daily_strain": ["Strain", "daily_strain"],
-        "recovery": ["Recovery", "Recovery Score", "recovery"],
+        "deep_sleep_mins": ["Deep (SWS) duration (min)", "Deep Sleep (min)", "deep_sleep_mins"],
+        "hrv": ["HRV", "hrv", "Heart rate variability (ms)"],
+        "resting_hr": ["Resting HR", "resting_heart_rate", "resting_hr", "Resting heart rate (bpm)"],
+        "daily_strain": ["Strain", "daily_strain", "Day Strain", "Activity Strain"],
+        "recovery": ["Recovery", "Recovery Score", "recovery", "Recovery score %"],
     }
 
-    out = df.groupby("date").agg({})
     # We'll build per-date rows
     rows = []
     for d, g in df.groupby("date"):
@@ -212,6 +218,11 @@ def parse_whoop_export(uploaded_file: Union[str, io.BytesIO]) -> pd.DataFrame:
                     row[key] = float(vals.mean()) if not vals.dropna().empty else None
             else:
                 row[key] = None
+
+        if row["deep_sleep_pct"] is None and row["deep_sleep_mins"] is not None and row["total_sleep_mins"] not in (None, 0):
+            row["deep_sleep_pct"] = float(row["deep_sleep_mins"] / row["total_sleep_mins"] * 100.0)
+
+        row.pop("deep_sleep_mins", None)
         rows.append(row)
 
     if not rows:
