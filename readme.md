@@ -1,184 +1,124 @@
 # MetaLife Risk
 
-> **Lifestyle-Based Metabolic Risk Forecasting (Awareness Only)**
+Lifestyle-Based Metabolic Risk Forecasting (awareness only).
 
-MetaLife Risk analyzes CGM (Continuous Glucose Monitor) data and optional wearable metrics to estimate daily metabolic risk zones (**Low** / **Moderate** / **High**) and provides a **120-Day Lifestyle Projection**. This is for **awareness only** — not medical advice.
+This repository now supports a production-style flow with real-world data:
 
----
+RAW DATA -> CLEANING -> FEATURE ENGINEERING -> MODEL -> PREDICTION -> DASHBOARD/API
 
-## 🎯 What It Does
+## End-to-End Capabilities
 
-1. **Analyzes your CGM data** — Parses Dexcom Clarity exports and computes daily glucose metrics
-2. **Predicts risk zones** — Classifies each day as Low, Moderate, or High metabolic risk
-3. **Projects forward** — Shows 120-day lifestyle continuation outlook based on current patterns
-4. **Visualizes trends** — Interactive charts for glucose, features, and risk over time
+- Real Dexcom Clarity CSV ingestion with column auto-detection
+- Optional wearable ingestion (WHOOP or combined health exports)
+- Validation and cleaning pipeline (datetime parsing, sort, deduplicate, missing handling, outlier filtering)
+- Daily feature engineering for glucose and wearables
+- Time-series lag features for next-day risk prediction
+- Model training with Random Forest and XGBoost comparison
+- Metrics: accuracy, precision, recall, F1, ROC-AUC (+ ROC curve artifact)
+- Prediction output: Low / Moderate / High + confidence score/label
+- SHAP-based explainability of top features
+- What-if simulation for spikes/sleep/HRV changes
+- FastAPI service with upload, predict, and simulate endpoints
+- Professional Streamlit dashboard
 
----
-
-## ✨ Features
-
-- **Dexcom Clarity CGM support**: Upload raw CSV exports directly
-- **WHOOP wearable support** (optional): Add sleep, recovery, and strain data
-- **Daily risk predictions**: Low / Moderate / High risk zones per day
-- **120-Day Lifestyle Projection**: Pattern continuation outlook assuming current habits
-- **Confidence scoring**: HIGH / MEDIUM / LOW confidence based on model probability
-- **Interactive visualizations**: Raw glucose, daily features, risk timeline, WHOOP data
-- **Key driver analysis**: See which features contribute most to predictions
-
----
-
-## 🚀 Quick Start
-
-### 1. Install dependencies
-
-```bash
-pip install -r metalife_risk/requirements.txt
-```
-
-### 2. Train a model
-
-```bash
-# Train using CGMacros data from data/ folder
-python -m metalife_risk.train_from_data
-
-# Or train with simulated data
-python -m metalife_risk.train
-```
-
-### 3. Run the Streamlit app
-
-```bash
-streamlit run metalife_risk/app.py
-```
-
-Then:
-1. Upload your Dexcom Clarity CSV
-2. (Optional) Upload WHOOP export
-3. Click **Run Predictions**
-4. View your risk zones and 120-day projection
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```
-metalife_risk/
-├── app.py               # Streamlit UI with visualizations
-├── parsers.py           # Parse Dexcom Clarity, WHOOP exports
-├── feature_engineering.py
-├── preprocessing.py
-├── train.py             # Train with simulated data
-├── train_from_data.py   # Train from data/ folder
-├── predict.py           # Load model, predict, compute confidence
-├── evaluate.py          # Classification report, confusion matrix
-└── data_simulation.py   # Generate synthetic data
+data_pipeline/
+	__init__.py
+	schema.py
+	cleaning.py
+	loaders.py
+
+features/
+	__init__.py
+	daily.py
+	timeseries.py
 
 models/
-├── best_model.joblib    # Best trained model (Random Forest)
-├── logistic_regression_model.joblib
-├── random_forest_model.joblib
-└── confusion_matrix.png
+	__init__.py
+	training.py
+	inference.py
+	explainability.py
+	simulation.py
+	*.joblib / metadata artifacts
 
-data/
-└── cgmacros-.../        # CGMacros dataset
+api/
+	main.py
+
+dashboard/
+	app.py
+
+utils/
+	__init__.py
+	config.py
+
+data/sample_real/
+	sample_cgm.csv
+	sample_wearable.csv
+
+train_real_world.py
 ```
 
----
+## Setup
 
-## 📊 CGM Features (Computed Daily)
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-| Feature | Description |
-|---------|-------------|
-| `glucose_mean` | Average glucose (mg/dL) |
-| `glucose_std` | Standard deviation of glucose |
-| `pct_time_above_140` | % of readings > 140 mg/dL |
-| `spike_freq` | Number of glucose spikes (>180 mg/dL) |
-| `gvi` | Glucose Variability Index |
+## Train with Real-World Pipeline
 
-## 💤 WHOOP Features (Optional)
+Use your own files by adapting `train_real_world.py`, or start with sample files:
 
-| Feature | Description |
-|---------|-------------|
-| `total_sleep_mins` | Total sleep duration |
-| `deep_sleep_pct` | Percentage of deep sleep |
-| `hrv` | Heart Rate Variability (ms) |
-| `resting_hr` | Resting heart rate (bpm) |
-| `daily_strain` | WHOOP daily strain score |
-| `recovery` | WHOOP recovery percentage |
+```bash
+python train_real_world.py
+```
 
----
+Artifacts are saved under `models/`.
 
-## 🏷️ Risk Zone Classification
+## Run Streamlit Dashboard
 
-Risk zones are determined by `pct_time_above_140`:
+```bash
+streamlit run dashboard/app.py
+```
 
-| Zone | % Time > 140 mg/dL | Color |
-|------|-------------------|-------|
-| **Low** | < 10% | 🟢 Green |
-| **Moderate** | 10% – 25% | 🟡 Yellow |
-| **High** | > 25% | 🔴 Red |
+## Run FastAPI Backend
 
----
+```bash
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-## 🔮 120-Day Lifestyle Projection
+### API Endpoints
 
-The app shows a **pattern continuation projection** based on your current risk zone:
+- `POST /upload-data`
+- `POST /predict`
+- `POST /simulate`
 
-| Current Risk | Projected Status |
-|--------------|------------------|
-| Low | 🟢 Low Metabolic Stress Continuation |
-| Moderate | 🟡 Moderate Metabolic Stress Continuation |
-| High | 🔴 High Metabolic Stress Continuation |
+## Data Requirements
 
-**Important:** This projection assumes current habits remain unchanged. It does **not** diagnose, predict, or confirm diabetes.
+### CGM input
 
----
+- Timestamp column (multiple aliases supported)
+- Glucose value column (multiple aliases supported)
 
-## 📈 Confidence Levels
+### Wearable input (optional)
 
-| Level | Criteria |
-|-------|----------|
-| **HIGH** | Probability ≥ 75% or margin ≥ 25% |
-| **MEDIUM** | Probability ≥ 60% or margin ≥ 15% |
-| **LOW** | Otherwise |
+- Date or cycle timestamp
+- Sleep duration
+- HRV
+- Resting heart rate
+- Strain
+- Recovery
 
----
+## Important Notes
 
-## 📥 Supported Input Formats
+- The system prioritizes real-world data handling and robust parsing.
+- If your training dataset has no explicit label, `risk_label` is generated from `% time above 140` thresholds.
+- For reliable model training, use larger longitudinal datasets (multiple weeks/months).
 
-### Dexcom Clarity CSV
-- Export from Dexcom Clarity app/web
-- Must contain glucose values and timestamps
-- Auto-detects various column name formats
+## Disclaimer
 
-### WHOOP Export
-- CSV, XLSX, or ZIP export from WHOOP app
-- Extracts sleep, HRV, strain, and recovery data
-
----
-
-## ⚠️ Disclaimer
-
-**MetaLife Risk is for educational and awareness purposes only.**
-
-- This tool does **not** provide medical advice
-- Do **not** change insulin or medication based on these insights
-- Not a diagnostic tool — consult a healthcare professional
-- Results assume patterns continue unchanged
-- Does **not** diagnose, predict, or confirm diabetes
-
----
-
-## 🛠️ Tech Stack
-
-- **Python 3.9+**
-- **Data**: pandas, numpy
-- **ML**: scikit-learn, joblib
-- **UI**: Streamlit, Altair
-- **Parsing**: openpyxl (Excel support)
-
----
-
-## 📄 License
-
-For educational use only. See dataset-specific licenses in `data/` folder.
+This tool does not provide medical advice and is not for diagnosis.
+Do not change medication or treatment based on model output.
